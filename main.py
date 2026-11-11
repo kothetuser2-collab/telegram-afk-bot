@@ -4,19 +4,19 @@ import os
 import threading
 from flask import Flask
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 
 # ==========================================
 # သင့်ရဲ့ အချက်အလက်များ
 # ==========================================
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
-PHONE_NUMBER = '+959661758125'
+SESSION_STRING = '1BVtsOHIBuxNFoP5Fy9dB_U61OhCHTncB6F_nUfrjq3e3ZZ9GRPpOccFJPz3w0eHKSqCBSfBempqHDUgOVvrnEt393UYXpMTVAYbljT3RyXUb1_9YUMIVzmf-QIxjKy_Ab5770nUyADF6fPBwk97zKWO7ilFK1a2DufhQN31nrO3s72MQKBOVILmIN2WCg8AJ0wqAtM6gXCB3zig5f8-XQrJglNaULQgRkl3rWhv-cEcknVzQFvmL9Fv5oSwcWrks3kze2sGam1ZpLhWa6c4kI8qxwbniwUam8v7qZFlEHX7DQycl2JgDPlhiGGlsQBOmzjfN5EMjIk1mhxuhviw8wH9DqIhh_6w='
 
-# ပြန်မည့် စာသား
-DEFAULT_REPLY = "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ စာလေးချန်ခဲ့ပေးပါဦးနော်။ ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ စိတ်မဆိုးနဲနော်။"
+DEFAULT_REPLY = "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ စာလေးချန်ခဲ့ပေးပါဦးနော်။ ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ ကျေးဇူးတင်ပါတယ်နော်။"
 
-SESSION_NAME = 'afk_bot_session'
-client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+# StringSession ကို အသုံးပြုပါမယ်
+client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
 # ==========================================
 # Render အတွက် Web Server
@@ -40,15 +40,9 @@ replied_users = set()
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     global afk_enabled
-    
-    if not event.is_private or event.out:
+    if not event.is_private or event.out or not afk_enabled:
         return
-        
-    if not afk_enabled:
-        return
-
     sender_id = event.sender_id
-    
     if sender_id not in replied_users:
         try:
             await event.mark_read()
@@ -73,7 +67,7 @@ async def disable_afk(event):
     await event.reply("❌ AFK auto-replies are OFF.")
 
 async def main():
-    await client.start(phone=PHONE_NUMBER)
+    await client.start()
     print("Telegram Client is running...")
     await client.run_until_disconnected()
 
