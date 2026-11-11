@@ -6,11 +6,11 @@ from flask import Flask
 from telethon import TelegramClient, events
 
 # ==========================================
-# ဒီနေရာမှာ သင့်အချက်အလက်တွေ ထည့်ပါ
+# သင့်ရဲ့ အချက်အလက်များ
 # ==========================================
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
-PHONE_NUMBER = '+959...' # သင့်ဖုန်းနံပါတ် အပြည့်အစုံကို ဒီမှာ ထည့်ပါ
+PHONE_NUMBER = '+959661758125'
 
 # ပြန်မည့် စာသား
 DEFAULT_REPLY = "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ စာလေးချန်ခဲ့ပေးပါဦးနော်။ ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ ကျေးဇူးတင်ပါတယ်နော်။"
@@ -41,17 +41,14 @@ replied_users = set()
 async def handler(event):
     global afk_enabled
     
-    # အကယ်၍ ကိုယ်တိုင် ပို့တဲ့စာဖြစ်ရင် ကျော်သွားမယ်
     if not event.is_private or event.out:
         return
         
-    # AFK ဖွင့်မထားရင် ဘာမှမလုပ်ဘူး
     if not afk_enabled:
         return
 
     sender_id = event.sender_id
     
-    # တစ်ယောက်ကို တစ်ခါပဲ ပြန်မယ်
     if sender_id not in replied_users:
         try:
             await event.mark_read()
@@ -81,7 +78,5 @@ async def main():
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
-    # Flask ကို နောက်ကွယ်မှာ run မယ်
     threading.Thread(target=run_flask, daemon=True).start()
-    # Telegram ကို run မယ်
     asyncio.run(main())
