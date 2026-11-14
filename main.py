@@ -8,14 +8,24 @@ from telethon.sessions import StringSession
 from google import genai
 from google.genai import types
 
+# ==========================================
+# သင့်ရဲ့ အချက်အလက်များ
+# ==========================================
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
+
+# သင့်ရဲ့ Gemini API Key
 GEMINI_API_KEY = 'AQ.Ab8RN6KPjIHqBH3mwrp7L2M6xqSJfZa8VxK4rxmTKEU69CBzLQ' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+
+# Gemini ကို သုံးဖို့ ပြင်ဆင်ခြင်း
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
+# ==========================================
+# Render အတွက် Web Server
+# ==========================================
 app = Flask(__name__)
 
 @app.route('/')
@@ -26,6 +36,9 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
+# ==========================================
+# Telegram Bot Logic (AI)
+# ==========================================
 afk_enabled = False
 user_states = {} 
 
@@ -33,16 +46,24 @@ WELCOME_MESSAGE = """မင်္ဂလာပါခင်ဗျာ။
 ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
 စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
 ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
-စိတ်မဆိုးနော်။"""
+စိတ်မဆိုးနော်။
 
-LIMIT_MESSAGE = """သတ်မှတ်ချက် ပြည့်သွားပါပြီ။"""
+🟢 ကျွန်တော့်ရဲ့ AI က မေးခွန်း ၁၀ ကြောင်းကို အပြည့်အဝ ဖြေပေးသွားပါမယ်။"""
+
+LIMIT_MESSAGE = """သတ်မှတ်ချက် ပြည့်သွားပါပြီ။ 
+
+ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။
+ကျေးဇူးတင်ပါတယ်။"""
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     global afk_enabled
     if not event.is_private or event.out or not afk_enabled:
         return
+        
     sender_id = event.sender_id
+    
+    # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား (Quote ပုံစံနဲ့) အရင်ပို့မယ်
     if sender_id not in user_states:
         user_states[sender_id] = {"count": 0}
         try:
@@ -52,24 +73,33 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
 
+    # AI နဲ့ ပြန်ဖြေမယ့်အပိုင်း (၁၀ ကြောင်း ကန့်သတ်ချက်)
     if user_states[sender_id]["count"] < 10:
         try:
             await event.mark_read()
             user_message = event.message.message
+            
+            # Gemini ကို ခေါ်မယ်
             response = await asyncio.to_thread(
                 ai_client.models.generate_content,
-                model='gemini-2.0-flash',
+                model='gemini-1.5-flash',
                 contents=user_message,
                 config=types.GenerateContentConfig(
-                    system_instruction="မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။"
+                    system_instruction="မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
                 )
             )
+            
             ai_reply = response.text
+            
+            # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
             await asyncio.sleep(random.randint(5, 10)) 
             await event.reply(ai_reply, reply_to=event.message.id) 
             user_states[sender_id]["count"] += 1
+            
         except Exception as e:
             print(f"Error replying: {e}")
+            
+    # ၁၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
     elif user_states[sender_id]["count"] == 10:
         try:
             await event.mark_read()
