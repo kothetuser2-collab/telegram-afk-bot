@@ -18,6 +18,9 @@ SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfn
 # သင့်ရဲ့ Groq API Key
 GROQ_API_KEY = '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' 
 
+# သင့်ရဲ့ Telegram ID (စမ်းသပ်ရာမှာ ကန့်သတ်ချက် မရှိစေရန်)
+ADMIN_ID = 8753276677 
+
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 ai_client = AsyncOpenAI(base_url="https://api.groq.com/openai/v1", api_key=GROQ_API_KEY)
 
@@ -45,13 +48,9 @@ user_cooldowns = {}
 async def handler(event):
     global afk_enabled
     
-    # ကိုယ်ပိုင်ချတ် မဟုတ်ရင်၊ ကိုယ်တိုင် ပို့တာဖြစ်ရင်၊ AFK မဖွင့်ထားရင် ကျော်သွားမယ်
     if not event.is_private or event.out or not afk_enabled:
         return
         
-    # သင့်ဖုန်း Online ဖြစ်နေလား စစ်ဆေးတဲ့စနစ်ကို ဖျက်ထားပါတယ်။ 
-    # (/afk ပို့ထားရင် အမြဲတမ်း အလုပ်လုပ်မယ်)
-
     sender_id = event.sender_id
     sender = await event.get_sender()
     sender_name = sender.first_name if sender.first_name else "သူငယ်ချင်း"
@@ -60,13 +59,15 @@ async def handler(event):
     mm_timezone = timezone(timedelta(hours=6, minutes=30))
     now = datetime.now(mm_timezone)
 
-    if sender_id in user_cooldowns:
-        if now < user_cooldowns[sender_id]:
-            return
-        else:
-            del user_cooldowns[sender_id]
-            if sender_id in user_states:
-                del user_states[sender_id]
+    # Admin မဟုတ်ရင် ၂၄ နာရီ စောင့်ဆိုင်းချက်ကို စစ်မယ်
+    if sender_id != ADMIN_ID:
+        if sender_id in user_cooldowns:
+            if now < user_cooldowns[sender_id]:
+                return
+            else:
+                del user_cooldowns[sender_id]
+                if sender_id in user_states:
+                    del user_states[sender_id]
 
     # ပထမဆုံးစာ ပို့ချင်းမှာ Auto Reply ကို အရင်ပို့မယ်
     if sender_id not in user_states:
@@ -98,24 +99,27 @@ async def handler(event):
             print(f"Error replying: {e}")
         return 
 
-    # Auto Reply ပို့ပြီးသားဖြစ်ရင် AI ကုဒ်တွေ အလုပ်လုပ်မယ်
+    # Auto Reply ပို့ပြီးသားဖြစ်ရင်
     if user_states[sender_id]["is_afk_sent"]:
         time_diff = (now - user_states[sender_id]["last_message_time"]).total_seconds()
         
-        if time_diff > 300:  # ၅ မိနစ်
-            user_cooldowns[sender_id] = now + timedelta(hours=24)
-            try:
-                await event.mark_read()
-                await asyncio.sleep(2)
-                cooldown_msg = "🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။ ၂၄ နာရီ ပြည့်မှ ပြန်လည် စကားပြောနိုင်ပါမယ်။"
-                await event.reply(cooldown_msg, reply_to=event.message.id, parse_mode='md')
-            except Exception as e:
-                print(f"Error replying: {e}")
-            return
+        # Admin မဟုတ်ရင် ၅ မိနစ် ကျော်ရင် ပိတ်မယ်
+        if sender_id != ADMIN_ID:
+            if time_diff > 300:  
+                user_cooldowns[sender_id] = now + timedelta(hours=24)
+                try:
+                    await event.mark_read()
+                    await asyncio.sleep(2)
+                    cooldown_msg = "🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။ ၂၄ နာရီ ပြည့်မှ ပြန်လည် စကားပြောနိုင်ပါမယ်။"
+                    await event.reply(cooldown_msg, reply_to=event.message.id, parse_mode='md')
+                except Exception as e:
+                    print(f"Error replying: {e}")
+                return
 
         user_states[sender_id]["last_message_time"] = now
 
-        if user_states[sender_id]["count"] < 15:
+        # Admin အတွက် ကန့်သတ်ချက် (၁၅ ကြောင်း) ကို ကျော်သွားမယ်
+        if sender_id == ADMIN_ID or user_states[sender_id]["count"] < 15:
             try:
                 await event.mark_read()
                 user_message = event.message.message
@@ -136,8 +140,22 @@ async def handler(event):
                 
                 await asyncio.sleep(random.randint(3, 7)) 
                 await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
-                user_states[sender_id]["count"] += 1
                 
+                # Admin မဟုတ်မှသာ Count တိုးမယ်
+                if sender_id != ADMIN_ID:
+                    user_states[sender_id]["count"] += 1
+                
+            except Exception as e:
+                print(f"Error replying: {e}")
+                
+        # သာမန်လူတွေအတွက် ၁၅ ကြောင်း ပြည့်သွားရင်
+        elif user_states[sender_id]["count"] == 15:
+            try:
+                await event.mark_read()
+                await asyncio.sleep(random.randint(2, 5))
+                limit_msg = "🛑 **သတ်မှတ်ချက် ပြည့်သွားပါပြီ။**\n\nကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။"
+                await event.reply(limit_msg, reply_to=event.message.id, parse_mode='md')
+                user_states[sender_id]["count"] += 1 
             except Exception as e:
                 print(f"Error replying: {e}")
 
