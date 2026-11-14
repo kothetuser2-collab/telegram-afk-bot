@@ -19,7 +19,7 @@ OPENROUTER_API_KEY = 'sk-or-v1-480e8e639bfb5662e1e68ca5b7e5462d5e6158450b349cc02
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
-# OpenRouter ကို သုံးဖို့ ပြင်ဆင်ခြင်း
+# OpenRouter ကို သုံးဖို့ ပြင်ဆင်ခြင်း (Version အသစ်အတွက်)
 ai_client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
@@ -85,6 +85,7 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
+            # AI ကို ခေါ်မယ်
             response = await ai_client.chat.completions.create(
                 model="openrouter/free",
                 messages=[
@@ -103,7 +104,7 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
             
-    # ၁၀ ကြောင်း ပြည့်သွားရင်
+    # ၁၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
     elif user_states[sender_id]["count"] == 10:
         try:
             await event.mark_read()
