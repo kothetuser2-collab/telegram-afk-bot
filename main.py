@@ -12,8 +12,9 @@ from openai import AsyncOpenAI
 # ==========================================
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
-SESSION_STRING = '1BVtsOL0Bu4VH9X8If3KfbhUqQUuP55jnEzNmzzDMl-sS4jhBywoaVx6g2tHyXDUJWULVkhYU5Yrrfn1s4c98ceyYyEcju26971-JybbmNFE9qJfUu0rbZ4Z1rJTr8CjUtNWHAWq6Kt7sNGCy8iqzh5fXdpRKvThUTc3dhiNDgJaL6Fbe7GiMTko_bpLoGFaY5ej4ZHQXQzy7OU1u7PeeeKYX9X5EnFHrEX7903tL_aiezjnNtTJXuMTWZfwOpw306vSLCx0CJSaxT3wFra-ee5800zgCJzk4c1PSh9k6wiRrRlrhCDX5W3fHQ_cPY-0i6yxRPqqAb13Pv4pylBICOERhixDkIlg='
+SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
 
+# သင့်ရဲ့ OpenRouter API Key
 OPENROUTER_API_KEY = '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' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
@@ -68,6 +69,7 @@ async def handler(event):
         
     sender_id = event.sender_id
     
+    # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား (Quote ပုံစံနဲ့) အရင်ပို့မယ်
     if sender_id not in user_states:
         user_states[sender_id] = {"count": 0}
         try:
@@ -77,11 +79,13 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
 
+    # AI နဲ့ ပြန်ဖြေမယ့်အပိုင်း (၁၀ ကြောင်း ကန့်သတ်ချက်)
     if user_states[sender_id]["count"] < 10:
         try:
             await event.mark_read()
             user_message = event.message.message
             
+            # AI ကို ခေါ်မယ်
             response = await ai_client.chat.completions.create(
                 model="openrouter/free",
                 messages=[
@@ -92,6 +96,7 @@ async def handler(event):
             
             ai_reply = response.choices[0].message.content
             
+            # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
             await asyncio.sleep(random.randint(5, 10)) 
             await event.reply(ai_reply, reply_to=event.message.id) 
             user_states[sender_id]["count"] += 1
@@ -99,6 +104,7 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
             
+    # ၁၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
     elif user_states[sender_id]["count"] == 10:
         try:
             await event.mark_read()
