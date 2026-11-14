@@ -2,7 +2,7 @@ import asyncio
 import random
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -61,7 +61,9 @@ async def handler(event):
     sender = await event.get_sender()
     sender_name = sender.first_name if sender.first_name else "သူငယ်ချင်း"
     
-    now = datetime.now()
+    # မြန်မာစံတော်ချိန် (UTC + 6:30) ကို သတ်မှတ်ခြင်း
+    mm_timezone = timezone(timedelta(hours=6, minutes=30))
+    now = datetime.now(mm_timezone)
 
     if sender_id in user_cooldowns:
         cooldown_end = user_cooldowns[sender_id]
@@ -85,6 +87,7 @@ async def handler(event):
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
             
+            # အချိန်ကို မြန်မာစံတော်ချိန်နဲ့ ပြမယ်
             dynamic_welcome = f"""✨ **AUTO - REPLY** ✨
 ━━━━━━━━━━━━━━━
 👤 **ပို့သူ:** {sender_name}
