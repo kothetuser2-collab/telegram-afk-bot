@@ -12,7 +12,7 @@ from openai import AsyncOpenAI
 # ==========================================
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
-SESSION_STRING = '1BVtsOHIBuxNFoP5Fy9dB_U61OhCHTncB6F_nUfrjq3e3ZZ9GRPpOccFJPz3w0eHKSqCBSfBempqHDUgOVvrnEt393UYXpMTVAYbljT3RyXUb1_9YUMIVzmf-QIxjKy_Ab5770nUyADF6fPBwk97zKWO7ilFK1a2DufhQN31nrO3s72MQKBOVILmIN2WCg8AJ0wqAtM6gXCB3zig5f8-XQrJglNaULQgRkl3rWhv-cEcknVzQFvmL9Fv5oSwcWrks3kze2sGam1ZpLhWa6c4kI8qxwbniwUam8v7qZFlEHX7DQycl2JgDPlhiGGlsQBOmzjfN5EMjIk1mhxuhviw8wH9DqIhh_6w='
+SESSION_STRING = '1BVtsOL0Bu4VH9X8If3KfbhUqQUuP55jnEzNmzzDMl-sS4jhBywoaVx6g2tHyXDUJWULVkhYU5Yrrfn1s4c98ceyYyEcju26971-JybbmNFE9qJfUu0rbZ4Z1rJTr8CjUtNWHAWq6Kt7sNGCy8iqzh5fXdpRKvThUTc3dhiNDgJaL6Fbe7GiMTko_bpLoGFaY5ej4ZHQXQzy7OU1u7PeeeKYX9X5EnFHrEX7903tL_aiezjnNtTJXuMTWZfwOpw306vSLCx0CJSaxT3wFra-ee5800zgCJzk4c1PSh9k6wiRrRlrhCDX5W3fHQ_cPY-0i6yxRPqqAb13Pv4pylBICOERhixDkIlg='
 
 # သင့်ရဲ့ OpenRouter API Key
 OPENROUTER_API_KEY = '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' 
@@ -85,7 +85,6 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # AI ကို ခေါ်မယ်
             response = await ai_client.chat.completions.create(
                 model="openrouter/free",
                 messages=[
