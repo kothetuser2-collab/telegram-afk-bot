@@ -19,12 +19,7 @@ SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfn
 GROQ_API_KEY = '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' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-
-# Groq ကို သုံးဖို့ ပြင်ဆင်ခြင်း
-ai_client = AsyncOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=GROQ_API_KEY
-)
+ai_client = AsyncOpenAI(base_url="https://api.groq.com/openai/v1", api_key=GROQ_API_KEY)
 
 # ==========================================
 # Render အတွက် Web Server
@@ -46,11 +41,6 @@ afk_enabled = False
 user_states = {} 
 user_cooldowns = {}  
 
-LIMIT_MESSAGE = """🛑 **သတ်မှတ်ချက် ပြည့်သွားပါပြီ** 
-━━━━━━━━━━━━━━━
-ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။
-ကျေးဇူးတင်ပါတယ်။"""
-
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     global afk_enabled
@@ -61,13 +51,12 @@ async def handler(event):
     sender = await event.get_sender()
     sender_name = sender.first_name if sender.first_name else "သူငယ်ချင်း"
     
-    # မြန်မာစံတော်ချိန် (UTC + 6:30) ကို သတ်မှတ်ခြင်း
+    # မြန်မာစံတော်ချိန် (UTC + 6:30)
     mm_timezone = timezone(timedelta(hours=6, minutes=30))
     now = datetime.now(mm_timezone)
 
     if sender_id in user_cooldowns:
-        cooldown_end = user_cooldowns[sender_id]
-        if now < cooldown_end:
+        if now < user_cooldowns[sender_id]:
             return
         else:
             del user_cooldowns[sender_id]
@@ -78,28 +67,24 @@ async def handler(event):
     if sender_id not in user_states:
         user_states[sender_id] = {
             "count": 0, 
-            "history": [],
             "last_message_time": now,
-            "name": sender_name,
             "is_afk_sent": False
         }
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
             
-            # အချိန်ကို မြန်မာစံတော်ချိန်နဲ့ ပြမယ်
+            # Ultimate Premium Auto Reply
             dynamic_welcome = f"""✨ **AUTO - REPLY** ✨
-━━━━━━━━━━━━━━━
-👤 **ပို့သူ:** {sender_name}
-🕒 **အချိန်:** {now.strftime('%I:%M %p')}
-━━━━━━━━━━━━━━━
+            
+👤 **ပို့သူ** ▸ {sender_name}
+🕒 **အချိန်** ▸ `{now.strftime('%I:%M %p')}`
+
 မင်္ဂလာပါ **{sender_name}** ခင်ဗျာ။ 
 ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
-စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
-ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
-စိတ်မဆိုးနော်။
-━━━━━━━━━━━━━━━
-🤖 **AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပြီး စကားပြောနိုင်ပါတယ်။**"""
+စာလေးချန်ခဲ့ပေးပါဦးနော်။ ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပါ့မယ်။
+
+💬 *AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပါ။*"""
             
             await event.reply(dynamic_welcome, reply_to=event.message.id, parse_mode='md') 
             user_states[sender_id]["is_afk_sent"] = True
@@ -115,60 +100,38 @@ async def handler(event):
             try:
                 await event.mark_read()
                 await asyncio.sleep(2)
-                cooldown_msg = "🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။ ၂၄ နာရီ ပြည့်မှ ပြန်လည် စကားပြောနိုင်ပါမယ်။"
-                await event.reply(cooldown_msg, reply_to=event.message.id, parse_mode='md')
+                await event.reply("🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။", reply_to=event.message.id, parse_mode='md')
             except Exception as e:
                 print(f"Error replying: {e}")
             return
 
         user_states[sender_id]["last_message_time"] = now
 
-        # စာကြောင်း ၁၅ ကြောင်း ကန့်သတ်ချက်
         if user_states[sender_id]["count"] < 15:
             try:
                 await event.mark_read()
                 user_message = event.message.message
                 
-                user_states[sender_id]["history"].append({"role": "user", "content": user_message})
-                
-                if len(user_states[sender_id]["history"]) > 10:
-                    user_states[sender_id]["history"] = user_states[sender_id]["history"][-10:]
-                
-                system_prompt = f"""မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ 
-အခု စကားပြောနေတဲ့သူက ကျွန်တော့်ရဲ့ သူငယ်ချင်းဖြစ်တဲ့ '{sender_name}' ပါ။ 
-သူ့ကို ရင်းရင်းနီးနီး၊ ခင်ခင်ဗျင်ဗျနဲ့ သူငယ်ချင်းတွေလို ပြောဆိုပေးပါ။ 
-တရားဝင် (Formal) စကားလုံးတွေ မသုံးပါနဲ့။ ရိုးရိုးရှင်းရှင်းနဲ့ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ 
-အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။ သူ့နာမည်ကို အမြဲတမ်း ထပ်ခါထပ်ခါ မပြောပါနဲ့။"""
+                system_prompt = f"မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ စကားပြောနေတဲ့သူက '{sender_name}' ပါ။ ရင်းရင်းနီးနီး၊ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
                 
                 response = await ai_client.chat.completions.create(
                     model="openai/gpt-oss-20b", 
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                    ] + user_states[sender_id]["history"]
+                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
                 )
                 
                 ai_reply = response.choices[0].message.content
-                user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
                 
-                formatted_ai_reply = f"""🤖 **AI ASSISTANT** 🤖
-━━━━━━━━━━━━━━━
+                # Ultimate Premium AI Reply
+                formatted_ai_reply = f"""💎 **AI ASSISTANT** 💎
+                
 {ai_reply}
-━━━━━━━━━━━━━━━"""
+
+⚡ *Powered by Groq AI*"""
                 
                 await asyncio.sleep(random.randint(3, 7)) 
                 await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
                 user_states[sender_id]["count"] += 1
                 
-            except Exception as e:
-                print(f"Error replying: {e}")
-                
-        # စာကြောင်း ၁၅ ကြောင်း ပြည့်သွားရင်
-        elif user_states[sender_id]["count"] == 15:
-            try:
-                await event.mark_read()
-                await asyncio.sleep(random.randint(2, 5))
-                await event.reply(LIMIT_MESSAGE, reply_to=event.message.id, parse_mode='md')
-                user_states[sender_id]["count"] += 1 
             except Exception as e:
                 print(f"Error replying: {e}")
 
@@ -178,7 +141,7 @@ async def enable_afk(event):
     afk_enabled = True
     user_states.clear()
     user_cooldowns.clear()
-    await event.reply("✅ **AI AFK auto-replies are ON.**")
+    await event.reply("✅ **AFK Mode ON**")
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^/back$'))
 async def disable_afk(event):
@@ -186,7 +149,7 @@ async def disable_afk(event):
     afk_enabled = False
     user_states.clear()
     user_cooldowns.clear()
-    await event.reply("❌ **AI AFK auto-replies are OFF.**")
+    await event.reply("❌ **AFK Mode OFF**")
 
 async def main():
     await client.start()
