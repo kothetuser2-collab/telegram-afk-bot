@@ -2,6 +2,7 @@ import asyncio
 import random
 import os
 import threading
+from datetime import datetime, timedelta
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -43,8 +44,8 @@ def run_flask():
 # ==========================================
 afk_enabled = False
 user_states = {} 
+user_cooldowns = {}  
 
-# Auto Reply ဒီဇိုင်း
 WELCOME_MESSAGE = """✅ **Auto Reply**
 ━━━━━━━━━━━━━━━
 မင်္ဂလာပါခင်ဗျာ။ 
@@ -66,12 +67,36 @@ async def handler(event):
     global afk_enabled
     if not event.is_private or event.out or not afk_enabled:
         return
+
+    # သင့်အကောင့် Online ဖြစ်နေလား စစ်ဆေးမယ်
+    try:
+        me = await client.get_me()
+        if me.status and me.status.__class__.__name__ == 'UserStatusOnline':
+            # သင် Online ဖြစ်နေရင် ဘာမှ ပြန်မဖြေဘူး
+            return
+    except Exception as e:
+        print(f"Error checking status: {e}")
         
     sender_id = event.sender_id
-    
+    now = datetime.now()
+
+    # သူငယ်ချင်းကို ၂၄ နာရီ ပိတ်ထားခြင်း ရှိမရှိ စစ်မယ်
+    if sender_id in user_cooldowns:
+        cooldown_end = user_cooldowns[sender_id]
+        if now < cooldown_end:
+            return
+        else:
+            del user_cooldowns[sender_id]
+            if sender_id in user_states:
+                del user_states[sender_id]
+
     # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား (Quote ပုံစံနဲ့) အရင်ပို့မယ်
     if sender_id not in user_states:
-        user_states[sender_id] = {"count": 0, "history": []}
+        user_states[sender_id] = {
+            "count": 0, 
+            "history": [],
+            "last_message_time": now
+        }
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
@@ -79,16 +104,29 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
 
-    # AI နဲ့ ပြန်ဖြေမယ့်အပိုင်း (၁၀၀ ကြောင်း ကန့်သတ်ချက်)
+    # ၅ မိနစ် စောင့်ဆိုင်းချိန် စစ်ဆေးခြင်း
+    time_diff = (now - user_states[sender_id]["last_message_time"]).total_seconds()
+    
+    if time_diff > 300:  # ၅ မိနစ်
+        user_cooldowns[sender_id] = now + timedelta(hours=24)
+        try:
+            await event.mark_read()
+            await asyncio.sleep(2)
+            cooldown_msg = "🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။ ၂၄ နာရီ ပြည့်မှ ပြန်လည် စကားပြောနိုင်ပါမယ်။"
+            await event.reply(cooldown_msg, reply_to=event.message.id, parse_mode='md')
+        except Exception as e:
+            print(f"Error replying: {e}")
+        return
+
+    user_states[sender_id]["last_message_time"] = now
+
     if user_states[sender_id]["count"] < 100:
         try:
             await event.mark_read()
             user_message = event.message.message
             
-            # စကားပြောသမိုင်းကို သိမ်းထားမယ်
             user_states[sender_id]["history"].append({"role": "user", "content": user_message})
             
-            # သမိုင်းကို ရှည်လွန်းသွားရင် ဖျက်မယ် (Token သက်သာစေရန်)
             if len(user_states[sender_id]["history"]) > 10:
                 user_states[sender_id]["history"] = user_states[sender_id]["history"][-10:]
             
@@ -100,14 +138,10 @@ async def handler(event):
             )
             
             ai_reply = response.choices[0].message.content
-            
-            # AI ရဲ့ အဖြေကို သမိုင်းထဲ ထည့်မယ်
             user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
             
-            # AI ပြန်တဲ့စာကို ဒီဇိုင်းနဲ့ ပို့မယ်
             formatted_ai_reply = f"🤖 **AI Reply**\n━━━━━━━━━━━━━━━\n{ai_reply}\n━━━━━━━━━━━━━━━"
             
-            # စက္ကန့် ၃ ကနေ ၇ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
             await asyncio.sleep(random.randint(3, 7)) 
             await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
             user_states[sender_id]["count"] += 1
@@ -115,7 +149,6 @@ async def handler(event):
         except Exception as e:
             print(f"Error replying: {e}")
             
-    # ၁၀၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
     elif user_states[sender_id]["count"] == 100:
         try:
             await event.mark_read()
@@ -127,16 +160,18 @@ async def handler(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^/afk$'))
 async def enable_afk(event):
-    global afk_enabled, user_states
+    global afk_enabled, user_states, user_cooldowns
     afk_enabled = True
     user_states.clear()
+    user_cooldowns.clear()
     await event.reply("✅ AI AFK auto-replies are ON.")
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^/back$'))
 async def disable_afk(event):
-    global afk_enabled, user_states
+    global afk_enabled, user_states, user_cooldowns
     afk_enabled = False
     user_states.clear()
+    user_cooldowns.clear()
     await event.reply("❌ AI AFK auto-replies are OFF.")
 
 async def main():
