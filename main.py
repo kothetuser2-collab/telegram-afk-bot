@@ -5,7 +5,7 @@ import threading
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from openai import AsyncOpenAI
+import openai
 
 # ==========================================
 # သင့်ရဲ့ အချက်အလက်များ
@@ -20,10 +20,8 @@ GROQ_API_KEY = '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'
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
 # Groq ကို သုံးဖို့ ပြင်ဆင်ခြင်း
-ai_client = AsyncOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=GROQ_API_KEY
-)
+openai.api_base = "https://api.groq.com/openai/v1"
+openai.api_key = GROQ_API_KEY
 
 # ==========================================
 # Render အတွက် Web Server
@@ -81,9 +79,10 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # Groq ကို ခေါ်မယ်
-            response = await ai_client.chat.completions.create(
-                model="llama-3.3-70b-versatile", # Groq ရဲ့ မြန်ဆန်တဲ့ မော်ဒယ်
+            # Groq ကို ခေါ်မယ် (သီးသန့် Thread နဲ့ run မယ်)
+            response = await asyncio.to_thread(
+                openai.ChatCompletion.create,
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": "မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"},
                     {"role": "user", "content": user_message}
@@ -92,7 +91,6 @@ async def handler(event):
             
             ai_reply = response.choices[0].message.content
             
-            # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
             await asyncio.sleep(random.randint(5, 10)) 
             await event.reply(ai_reply, reply_to=event.message.id) 
             user_states[sender_id]["count"] += 1
