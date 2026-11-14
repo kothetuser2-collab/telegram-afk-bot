@@ -1,3 +1,3 @@
 telethon
 Flask
-openai
+google-genai
