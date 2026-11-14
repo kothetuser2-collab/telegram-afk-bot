@@ -5,7 +5,8 @@ import threading
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from openai import AsyncOpenAI
+from google import genai
+from google.genai import types
 
 # ==========================================
 # သင့်ရဲ့ အချက်အလက်များ
@@ -13,10 +14,12 @@ from openai import AsyncOpenAI
 API_ID = 36255475 
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOHIBuxNFoP5Fy9dB_U61OhCHTncB6F_nUfrjq3e3ZZ9GRPpOccFJPz3w0eHKSqCBSfBempqHDUgOVvrnEt393UYXpMTVAYbljT3RyXUb1_9YUMIVzmf-QIxjKy_Ab5770nUyADF6fPBwk97zKWO7ilFK1a2DufhQN31nrO3s72MQKBOVILmIN2WCg8AJ0wqAtM6gXCB3zig5f8-XQrJglNaULQgRkl3rWhv-cEcknVzQFvmL9Fv5oSwcWrks3kze2sGam1ZpLhWa6c4kI8qxwbniwUam8v7qZFlEHX7DQycl2JgDPlhiGGlsQBOmzjfN5EMjIk1mhxuhviw8wH9DqIhh_6w='
-OPENROUTER_API_KEY = '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' 
+
+# သင့်ရဲ့ Gemini API Key
+GEMINI_API_KEY = 'AQ.Ab8RN6KPjIHqBH3mwrp7L2M6xqSJfZa8VxK4rxmTKEU69CBzLQ' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-ai_client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENROUTER_API_KEY)
+ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ==========================================
 # Render အတွက် Web Server
@@ -37,7 +40,6 @@ def run_flask():
 afk_enabled = False
 user_states = {} 
 
-# ပထမဆုံး ပို့မယ့် စာသား
 WELCOME_MESSAGE = """မင်္ဂလာပါခင်ဗျာ။ 
 ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
 စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
@@ -46,7 +48,6 @@ WELCOME_MESSAGE = """မင်္ဂလာပါခင်ဗျာ။
 
 🟢 ကျွန်တော့်ရဲ့ AI က မေးခွန်း ၁၀ ကြောင်းကို အပြည့်အဝ ဖြေပေးသွားပါမယ်။"""
 
-# စာကြောင်း ၁၀ ကြောင်း ပြည့်သွားရင် ပို့မယ့် စာသား
 LIMIT_MESSAGE = """သတ်မှတ်ချက် ပြည့်သွားပါပြီ။ 
 
 ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။
@@ -60,15 +61,13 @@ async def handler(event):
         
     sender_id = event.sender_id
     
-    # အကယ်၍ ဒီလူက စကားမစသေးရင် (ပထမဆုံးစာ)
+    # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား အရင်ပို့မယ် (Quote ပုံစံနဲ့)
     if sender_id not in user_states:
-        user_states[sender_id] = {"count": 0, "history": []}
-        
+        user_states[sender_id] = {"count": 0}
         try:
             await event.mark_read()
-            # ပထမဆုံး စာသားကို အရင်ပို့မယ်
-            await asyncio.sleep(random.randint(2, 5)) # ခဏစောင့်
-            await event.reply(WELCOME_MESSAGE)
+            await asyncio.sleep(random.randint(2, 5)) 
+            await event.reply(WELCOME_MESSAGE, reply_to=event.message.id) # Quote လုပ်ရန်
         except Exception as e:
             print(f"Error replying: {e}")
 
@@ -78,39 +77,31 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # စကားပြောသမိုင်းကို သိမ်းထားမယ်
-            user_states[sender_id]["history"].append({"role": "user", "content": user_message})
-            
-            # AI ဆီ မေးမယ်
-            response = await ai_client.chat.completions.create(
-                model="openrouter/free",
-                messages=[
-                    {"role": "system", "content": "မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ ကျွန်တော် အခု မအားလို့ မရှိပါဘူး။ ဒါကြောင့် စာပို့လာတဲ့သူကို ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပါ့မယ်လို့ ပြောပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"}
-                ] + user_states[sender_id]["history"]
+            response = await asyncio.to_thread(
+                ai_client.models.generate_content,
+                model='gemini-2.5-flash',
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction="မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
+                )
             )
             
-            ai_reply = response.choices[0].message.content
+            ai_reply = response.text
             
-            # သမိုင်းထဲမှာ AI ရဲ့ အဖြေကို ထည့်မယ်
-            user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
-            
-            # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး ပြန်ပို့မယ် (Ban မခံရအောင်)
             await asyncio.sleep(random.randint(5, 10)) 
-            await event.reply(ai_reply)
-            
-            # စကားပြောတဲ့ အရေအတွက် တိုးမယ်
+            # AI ရဲ့ အဖြေကိုလည်း Quote ပုံစံနဲ့ပဲ ပြန်မယ်
+            await event.reply(ai_reply, reply_to=event.message.id) 
             user_states[sender_id]["count"] += 1
             
         except Exception as e:
             print(f"Error replying: {e}")
             
-    # အကယ်၍ ၁၀ ကြောင်း ပြည့်သွားရင်
+    # ၁၀ ကြောင်း ပြည့်သွားရင်
     elif user_states[sender_id]["count"] == 10:
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5))
-            await event.reply(LIMIT_MESSAGE)
-            # နောက်တစ်ခါ ထပ်မပို့အောင် Count ကို ၁၁ ထားလိုက်မယ်
+            await event.reply(LIMIT_MESSAGE, reply_to=event.message.id)
             user_states[sender_id]["count"] += 1 
         except Exception as e:
             print(f"Error replying: {e}")
@@ -119,7 +110,7 @@ async def handler(event):
 async def enable_afk(event):
     global afk_enabled, user_states
     afk_enabled = True
-    user_states.clear() # Reset လုပ်မယ်
+    user_states.clear()
     await event.reply("✅ AI AFK auto-replies are ON.")
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^/back$'))
