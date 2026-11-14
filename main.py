@@ -14,7 +14,7 @@ API_ID = 36255475
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
 
-# သင့်ရဲ့ Groq API Key အသစ်
+# သင့်ရဲ့ Groq API Key
 GROQ_API_KEY = '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' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
@@ -44,16 +44,20 @@ def run_flask():
 afk_enabled = False
 user_states = {} 
 
-WELCOME_MESSAGE = """မင်္ဂလာပါခင်ဗျာ။ 
+# Auto Reply ဒီဇိုင်း (အပြင်အဆင် အသစ်)
+WELCOME_MESSAGE = """✅ **Auto Reply**
+━━━━━━━━━━━━━━━
+မင်္ဂလာပါခင်ဗျာ။ 
 ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
 စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
 ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
 စိတ်မဆိုးနော်။
+━━━━━━━━━━━━━━━
+🤖 **AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပြီး စကားပြောနိုင်ပါတယ်။**
+🟢 ကျွန်တော့်ရဲ့ AI က မေးခွန်း ၁၀၀ ကြောင်းကို အပြည့်အဝ ဖြေပေးသွားပါမယ်။"""
 
-🟢 ကျွန်တော့်ရဲ့ AI က မေးခွန်း ၁၀ ကြောင်းကို အပြည့်အဝ ဖြေပေးသွားပါမယ်။"""
-
-LIMIT_MESSAGE = """သတ်မှတ်ချက် ပြည့်သွားပါပြီ။ 
-
+LIMIT_MESSAGE = """🛑 **သတ်မှတ်ချက် ပြည့်သွားပါပြီ** 
+━━━━━━━━━━━━━━━
 ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။
 ကျေးဇူးတင်ပါတယ်။"""
 
@@ -71,17 +75,17 @@ async def handler(event):
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
-            await event.reply(WELCOME_MESSAGE, reply_to=event.message.id)
+            # Auto reply ကို ဒီဇိုင်းနဲ့ ပို့မယ်
+            await event.reply(WELCOME_MESSAGE, reply_to=event.message.id, parse_mode='md') 
         except Exception as e:
             print(f"Error replying: {e}")
 
-    # AI နဲ့ ပြန်ဖြေမယ့်အပိုင်း (၁၀ ကြောင်း ကန့်သတ်ချက်)
-    if user_states[sender_id]["count"] < 10:
+    # AI နဲ့ ပြန်ဖြေမယ့်အပိုင်း (၁၀၀ ကြောင်း ကန့်သတ်ချက်)
+    if user_states[sender_id]["count"] < 100:
         try:
             await event.mark_read()
             user_message = event.message.message
             
-            # Groq ကို ခေါ်မယ် (မော်ဒယ်နာမည်အသစ်)
             response = await ai_client.chat.completions.create(
                 model="openai/gpt-oss-20b", 
                 messages=[
@@ -92,20 +96,22 @@ async def handler(event):
             
             ai_reply = response.choices[0].message.content
             
-            # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
+            # AI ပြန်တဲ့စာကို ဒီဇိုင်းနဲ့ ပို့မယ်
+            formatted_ai_reply = f"🤖 **AI Reply**\n━━━━━━━━━━━━━━━\n{ai_reply}\n━━━━━━━━━━━━━━━"
+            
             await asyncio.sleep(random.randint(5, 10)) 
-            await event.reply(ai_reply, reply_to=event.message.id) 
+            await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
             user_states[sender_id]["count"] += 1
             
         except Exception as e:
             print(f"Error replying: {e}")
             
-    # ၁၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
-    elif user_states[sender_id]["count"] == 10:
+    # ၁၀၀ ကြောင်း ပြည့်သွားရင် သတိပေးစာ ပို့မယ်
+    elif user_states[sender_id]["count"] == 100:
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5))
-            await event.reply(LIMIT_MESSAGE, reply_to=event.message.id)
+            await event.reply(LIMIT_MESSAGE, reply_to=event.message.id, parse_mode='md')
             user_states[sender_id]["count"] += 1 
         except Exception as e:
             print(f"Error replying: {e}")
