@@ -46,17 +46,6 @@ afk_enabled = False
 user_states = {} 
 user_cooldowns = {}  
 
-WELCOME_MESSAGE = """✅ **Auto Reply**
-━━━━━━━━━━━━━━━
-မင်္ဂလာပါခင်ဗျာ။ 
-ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
-စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
-ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
-စိတ်မဆိုးနော်။
-━━━━━━━━━━━━━━━
-🤖 **AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပြီး စကားပြောနိုင်ပါတယ်။**
-🟢 ကျွန်တော့်ရဲ့ AI က မေးခွန်း ၁၀၀ ကြောင်းကို အပြည့်အဝ ဖြေပေးသွားပါမယ်။"""
-
 LIMIT_MESSAGE = """🛑 **သတ်မှတ်ချက် ပြည့်သွားပါပြီ** 
 ━━━━━━━━━━━━━━━
 ကျွန်တော် ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။
@@ -68,16 +57,10 @@ async def handler(event):
     if not event.is_private or event.out or not afk_enabled:
         return
 
-    # သင့်အကောင့် Online ဖြစ်နေလား စစ်ဆေးမယ်
-    try:
-        me = await client.get_me()
-        if me.status and me.status.__class__.__name__ == 'UserStatusOnline':
-            # သင် Online ဖြစ်နေရင် ဘာမှ ပြန်မဖြေဘူး
-            return
-    except Exception as e:
-        print(f"Error checking status: {e}")
-        
     sender_id = event.sender_id
+    sender = await event.get_sender()
+    sender_name = sender.first_name if sender.first_name else "သူငယ်ချင်း"
+    
     now = datetime.now()
 
     # သူငယ်ချင်းကို ၂၄ နာရီ ပိတ်ထားခြင်း ရှိမရှိ စစ်မယ်
@@ -90,19 +73,35 @@ async def handler(event):
             if sender_id in user_states:
                 del user_states[sender_id]
 
-    # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား (Quote ပုံစံနဲ့) အရင်ပို့မယ်
+    # ပထမဆုံးစာ ပို့ချင်းမှာ Auto Reply (နာမည်နဲ့) ကို အရင်ပို့မယ်
     if sender_id not in user_states:
         user_states[sender_id] = {
             "count": 0, 
             "history": [],
-            "last_message_time": now
+            "last_message_time": now,
+            "name": sender_name,
+            "is_afk_sent": False
         }
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
-            await event.reply(WELCOME_MESSAGE, reply_to=event.message.id, parse_mode='md') 
+            
+            # သူငယ်ချင်းရဲ့ နာမည်ကို ထည့်ပြီး Auto Reply စာသား ဖန်တီးမယ်
+            dynamic_welcome = f"""✅ **Auto Reply**
+━━━━━━━━━━━━━━━
+မင်္ဂလာပါ **{sender_name}** ခင်ဗျာ။ 
+ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
+စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
+ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
+စိတ်မဆိုးနော်။
+━━━━━━━━━━━━━━━
+🤖 **AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပြီး စကားပြောနိုင်ပါတယ်။**"""
+            
+            await event.reply(dynamic_welcome, reply_to=event.message.id, parse_mode='md') 
+            user_states[sender_id]["is_afk_sent"] = True
         except Exception as e:
             print(f"Error replying: {e}")
+        return  # Auto Reply ပို့ပြီးတာနဲ့ ရပ်မယ်
 
     # ၅ မိနစ် စောင့်ဆိုင်းချိန် စစ်ဆေးခြင်း
     time_diff = (now - user_states[sender_id]["last_message_time"]).total_seconds()
@@ -130,17 +129,21 @@ async def handler(event):
             if len(user_states[sender_id]["history"]) > 10:
                 user_states[sender_id]["history"] = user_states[sender_id]["history"][-10:]
             
+            # AI ကို သူငယ်ချင်းရဲ့ နာမည်နဲ့ တွဲဖက်ပြောခိုင်းမယ်
+            system_prompt = f"မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ အခု စကားပြောနေတဲ့သူရဲ့ နာမည်က '{sender_name}' ဖြစ်ပါတယ်။ သူ့ကို ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ သူ့နာမည်ကို ထည့်ပြီး ပြောပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
+            
             response = await ai_client.chat.completions.create(
                 model="openai/gpt-oss-20b", 
                 messages=[
-                    {"role": "system", "content": "မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"},
+                    {"role": "system", "content": system_prompt},
                 ] + user_states[sender_id]["history"]
             )
             
             ai_reply = response.choices[0].message.content
             user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
             
-            formatted_ai_reply = f"🤖 **AI Reply**\n━━━━━━━━━━━━━━━\n{ai_reply}\n━━━━━━━━━━━━━━━"
+            # နာမည်ကို ထိပ်မှာ ပြမယ်
+            formatted_ai_reply = f"👤 **{sender_name}** ကို ပြန်ကြားချက်\n━━━━━━━━━━━━━━━\n{ai_reply}\n━━━━━━━━━━━━━━━"
             
             await asyncio.sleep(random.randint(3, 7)) 
             await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
