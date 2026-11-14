@@ -44,7 +44,7 @@ def run_flask():
 afk_enabled = False
 user_states = {} 
 
-# Auto Reply ဒီဇိုင်း (အပြင်အဆင် အသစ်)
+# Auto Reply ဒီဇိုင်း
 WELCOME_MESSAGE = """✅ **Auto Reply**
 ━━━━━━━━━━━━━━━
 မင်္ဂလာပါခင်ဗျာ။ 
@@ -71,11 +71,10 @@ async def handler(event):
     
     # ပထမဆုံးစာ ပို့ချင်းမှာ မူလစာသား (Quote ပုံစံနဲ့) အရင်ပို့မယ်
     if sender_id not in user_states:
-        user_states[sender_id] = {"count": 0}
+        user_states[sender_id] = {"count": 0, "history": []}
         try:
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
-            # Auto reply ကို ဒီဇိုင်းနဲ့ ပို့မယ်
             await event.reply(WELCOME_MESSAGE, reply_to=event.message.id, parse_mode='md') 
         except Exception as e:
             print(f"Error replying: {e}")
@@ -86,20 +85,30 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
+            # စကားပြောသမိုင်းကို သိမ်းထားမယ်
+            user_states[sender_id]["history"].append({"role": "user", "content": user_message})
+            
+            # သမိုင်းကို ရှည်လွန်းသွားရင် ဖျက်မယ် (Token သက်သာစေရန်)
+            if len(user_states[sender_id]["history"]) > 10:
+                user_states[sender_id]["history"] = user_states[sender_id]["history"][-10:]
+            
             response = await ai_client.chat.completions.create(
                 model="openai/gpt-oss-20b", 
                 messages=[
                     {"role": "system", "content": "မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"},
-                    {"role": "user", "content": user_message}
-                ]
+                ] + user_states[sender_id]["history"]
             )
             
             ai_reply = response.choices[0].message.content
             
+            # AI ရဲ့ အဖြေကို သမိုင်းထဲ ထည့်မယ်
+            user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
+            
             # AI ပြန်တဲ့စာကို ဒီဇိုင်းနဲ့ ပို့မယ်
             formatted_ai_reply = f"🤖 **AI Reply**\n━━━━━━━━━━━━━━━\n{ai_reply}\n━━━━━━━━━━━━━━━"
             
-            await asyncio.sleep(random.randint(5, 10)) 
+            # စက္ကန့် ၃ ကနေ ၇ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
+            await asyncio.sleep(random.randint(3, 7)) 
             await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
             user_states[sender_id]["count"] += 1
             
