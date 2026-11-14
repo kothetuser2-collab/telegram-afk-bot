@@ -15,8 +15,8 @@ API_ID = 36255475
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
 
-# သင့်ရဲ့ Gemini API Key
-GEMINI_API_KEY = 'AQ.Ab8RN6KPjIHqBH3mwrp7L2M6xqSJfZa8VxK4rxmTKEU69CBzLQ' 
+# သင့်ရဲ့ Gemini API Key အသစ်
+GEMINI_API_KEY = 'AQ.Ab8RN6KPtEfRy2HsY7wHAeqAcKszOaCXwVLvjA7NuQnxrFVaVA' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
@@ -79,10 +79,10 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # Gemini ကို ခေါ်မယ်
+            # Gemini ကို ခေါ်မယ် (မော်ဒယ်နာမည်အသစ်)
             response = await asyncio.to_thread(
                 ai_client.models.generate_content,
-                model='gemini-1.5-flash',
+                model='gemini-3.8-flash',
                 contents=user_message,
                 config=types.GenerateContentConfig(
                     system_instruction="မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
