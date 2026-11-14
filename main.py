@@ -14,8 +14,8 @@ API_ID = 36255475
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
 
-# သင့်ရဲ့ OpenRouter API Key
-OPENROUTER_API_KEY = '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' 
+# သင့်ရဲ့ OpenRouter API Key (အသစ်)
+OPENROUTER_API_KEY = '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' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
@@ -85,7 +85,6 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # AI ကို ခေါ်မယ်
             response = await ai_client.chat.completions.create(
                 model="openrouter/free",
                 messages=[
