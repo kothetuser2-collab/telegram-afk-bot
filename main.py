@@ -44,8 +44,13 @@ user_cooldowns = {}
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     global afk_enabled
+    
+    # ကိုယ်ပိုင်ချတ် မဟုတ်ရင်၊ ကိုယ်တိုင် ပို့တာဖြစ်ရင်၊ AFK မဖွင့်ထားရင် ကျော်သွားမယ်
     if not event.is_private or event.out or not afk_enabled:
         return
+        
+    # သင့်ဖုန်း Online ဖြစ်နေလား စစ်ဆေးတဲ့စနစ်ကို ဖျက်ထားပါတယ်။ 
+    # (/afk ပို့ထားရင် အမြဲတမ်း အလုပ်လုပ်မယ်)
 
     sender_id = event.sender_id
     sender = await event.get_sender()
@@ -74,17 +79,18 @@ async def handler(event):
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
             
-            # Ultimate Premium Auto Reply
             dynamic_welcome = f"""✨ **AUTO - REPLY** ✨
-            
-👤 **ပို့သူ** ▸ {sender_name}
-🕒 **အချိန်** ▸ `{now.strftime('%I:%M %p')}`
-
+━━━━━━━━━━━━━━━
+👤 **ပို့သူ:** {sender_name}
+🕒 **အချိန်:** {now.strftime('%I:%M %p')}
+━━━━━━━━━━━━━━━
 မင်္ဂလာပါ **{sender_name}** ခင်ဗျာ။ 
 ကျွန်တော် အခုလောလောဆယ် ဖုန်းနဲ့ ဝေးနေလို့ပါ။ 
-စာလေးချန်ခဲ့ပေးပါဦးနော်။ ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပါ့မယ်။
-
-💬 *AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပါ။*"""
+စာလေးချန်ခဲ့ပေးပါဦးနော်။ 
+ကျွန်တော် အဆင်ပြေတာနဲ့ ချက်ချင်း ပြန်ဆက်သွယ်ပေးပါ့မယ်ခင်ဗျာ။ 
+စိတ်မဆိုးနော်။
+━━━━━━━━━━━━━━━
+🤖 **AI နဲ့ စကားပြောလိုပါက "ဟုတ်ကဲ့" လို့ ပြန်ပို့ပြီး စကားပြောနိုင်ပါတယ်။**"""
             
             await event.reply(dynamic_welcome, reply_to=event.message.id, parse_mode='md') 
             user_states[sender_id]["is_afk_sent"] = True
@@ -92,6 +98,7 @@ async def handler(event):
             print(f"Error replying: {e}")
         return 
 
+    # Auto Reply ပို့ပြီးသားဖြစ်ရင် AI ကုဒ်တွေ အလုပ်လုပ်မယ်
     if user_states[sender_id]["is_afk_sent"]:
         time_diff = (now - user_states[sender_id]["last_message_time"]).total_seconds()
         
@@ -100,7 +107,8 @@ async def handler(event):
             try:
                 await event.mark_read()
                 await asyncio.sleep(2)
-                await event.reply("🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။", reply_to=event.message.id, parse_mode='md')
+                cooldown_msg = "🛑 **စကားပြောချိန် ၅ မိနစ် ကျော်သွားပါပြီ။**\n\nသင့်အကောင့်ကို ၂၄ နာရီ ပိတ်ထားပါမယ်။ ၂၄ နာရီ ပြည့်မှ ပြန်လည် စကားပြောနိုင်ပါမယ်။"
+                await event.reply(cooldown_msg, reply_to=event.message.id, parse_mode='md')
             except Exception as e:
                 print(f"Error replying: {e}")
             return
@@ -121,12 +129,10 @@ async def handler(event):
                 
                 ai_reply = response.choices[0].message.content
                 
-                # Ultimate Premium AI Reply
                 formatted_ai_reply = f"""💎 **AI ASSISTANT** 💎
-                
+━━━━━━━━━━━━━━━
 {ai_reply}
-
-⚡ *Powered by Groq AI*"""
+━━━━━━━━━━━━━━━"""
                 
                 await asyncio.sleep(random.randint(3, 7)) 
                 await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
@@ -141,7 +147,7 @@ async def enable_afk(event):
     afk_enabled = True
     user_states.clear()
     user_cooldowns.clear()
-    await event.reply("✅ **AFK Mode ON**")
+    await event.reply("✅ **AI AFK auto-replies are ON.**")
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^/back$'))
 async def disable_afk(event):
@@ -149,7 +155,7 @@ async def disable_afk(event):
     afk_enabled = False
     user_states.clear()
     user_cooldowns.clear()
-    await event.reply("❌ **AFK Mode OFF**")
+    await event.reply("❌ **AI AFK auto-replies are OFF.**")
 
 async def main():
     await client.start()
