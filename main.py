@@ -63,7 +63,6 @@ async def handler(event):
     
     now = datetime.now()
 
-    # သူငယ်ချင်းကို ၂၄ နာရီ ပိတ်ထားခြင်း ရှိမရှိ စစ်မယ်
     if sender_id in user_cooldowns:
         cooldown_end = user_cooldowns[sender_id]
         if now < cooldown_end:
@@ -73,7 +72,7 @@ async def handler(event):
             if sender_id in user_states:
                 del user_states[sender_id]
 
-    # ပထမဆုံးစာ ပို့ချင်းမှာ Auto Reply (Premium ဒီဇိုင်း) ကို အရင်ပို့မယ်
+    # ပထမဆုံးစာ ပို့ချင်းမှာ Auto Reply ကို အရင်ပို့မယ်
     if sender_id not in user_states:
         user_states[sender_id] = {
             "count": 0, 
@@ -86,7 +85,6 @@ async def handler(event):
             await event.mark_read()
             await asyncio.sleep(random.randint(2, 5)) 
             
-            # Premium ဆန်ဆန် ဒီဇိုင်းဖန်တီးခြင်း
             dynamic_welcome = f"""✨ **AUTO - REPLY** ✨
 ━━━━━━━━━━━━━━━
 👤 **ပို့သူ:** {sender_name}
@@ -106,10 +104,7 @@ async def handler(event):
             print(f"Error replying: {e}")
         return 
 
-    # Auto Reply ပို့ပြီးသားဖြစ်ရင် ဒီအောက်က AI ကုဒ်တွေ အလုပ်လုပ်မယ်
     if user_states[sender_id]["is_afk_sent"]:
-        
-        # ၅ မိနစ် စောင့်ဆိုင်းချိန် စစ်ဆေးခြင်း
         time_diff = (now - user_states[sender_id]["last_message_time"]).total_seconds()
         
         if time_diff > 300:  # ၅ မိနစ်
@@ -125,7 +120,8 @@ async def handler(event):
 
         user_states[sender_id]["last_message_time"] = now
 
-        if user_states[sender_id]["count"] < 100:
+        # စာကြောင်း ၁၅ ကြောင်း ကန့်သတ်ချက်
+        if user_states[sender_id]["count"] < 15:
             try:
                 await event.mark_read()
                 user_message = event.message.message
@@ -135,7 +131,11 @@ async def handler(event):
                 if len(user_states[sender_id]["history"]) > 10:
                     user_states[sender_id]["history"] = user_states[sender_id]["history"][-10:]
                 
-                system_prompt = f"မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ အခု စကားပြောနေတဲ့သူရဲ့ နာမည်က '{sender_name}' ဖြစ်ပါတယ်။ သူ့ကို ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ သူ့နာမည်ကို ထည့်ပြီး ပြောပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
+                system_prompt = f"""မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ 
+အခု စကားပြောနေတဲ့သူက ကျွန်တော့်ရဲ့ သူငယ်ချင်းဖြစ်တဲ့ '{sender_name}' ပါ။ 
+သူ့ကို ရင်းရင်းနီးနီး၊ ခင်ခင်ဗျင်ဗျနဲ့ သူငယ်ချင်းတွေလို ပြောဆိုပေးပါ။ 
+တရားဝင် (Formal) စကားလုံးတွေ မသုံးပါနဲ့။ ရိုးရိုးရှင်းရှင်းနဲ့ ချိုချိုသာသာ မြန်မာလိုပဲ ပြန်ဖြေပေးပါ။ 
+အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။ သူ့နာမည်ကို အမြဲတမ်း ထပ်ခါထပ်ခါ မပြောပါနဲ့။"""
                 
                 response = await ai_client.chat.completions.create(
                     model="openai/gpt-oss-20b", 
@@ -147,14 +147,10 @@ async def handler(event):
                 ai_reply = response.choices[0].message.content
                 user_states[sender_id]["history"].append({"role": "assistant", "content": ai_reply})
                 
-                # AI ပြန်တဲ့စာကို Premium ဒီဇိုင်းနဲ့ ပြမယ်
                 formatted_ai_reply = f"""🤖 **AI ASSISTANT** 🤖
 ━━━━━━━━━━━━━━━
-👤 **{sender_name}** အတွက် ပြန်ကြားချက်
-━━━━━━━━━━━━━━━
 {ai_reply}
-━━━━━━━━━━━━━━━
-💡 *ကျွန်တော် ခဏလေး မရှိပါဘူး။ ပြန်ရောက်တာနဲ့ ဆက်သွယ်ပါ့မယ်။*"""
+━━━━━━━━━━━━━━━"""
                 
                 await asyncio.sleep(random.randint(3, 7)) 
                 await event.reply(formatted_ai_reply, reply_to=event.message.id, parse_mode='md') 
@@ -163,7 +159,8 @@ async def handler(event):
             except Exception as e:
                 print(f"Error replying: {e}")
                 
-        elif user_states[sender_id]["count"] == 100:
+        # စာကြောင်း ၁၅ ကြောင်း ပြည့်သွားရင်
+        elif user_states[sender_id]["count"] == 15:
             try:
                 await event.mark_read()
                 await asyncio.sleep(random.randint(2, 5))
