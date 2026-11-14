@@ -5,8 +5,7 @@ import threading
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from google import genai
-from google.genai import types
+from openai import AsyncOpenAI
 
 # ==========================================
 # သင့်ရဲ့ အချက်အလက်များ
@@ -15,13 +14,16 @@ API_ID = 36255475
 API_HASH = 'f0d7017664d12f199d5683782f2bb0bb'
 SESSION_STRING = '1BVtsOL0Bu1uSCTce9u9dzbkcaktoLBp-uMtkb2KRDr7Wkk4Ddz-PCnCcV_kfnOrVQCZcFrAvZA9HQkvI5CNVpYGyfxQDlpAYRx-QvneDVh1PJS0S3VvJ7PiYNQ83F2AeFYB5YVXNPdm5EcqK6LefhPEDnpxZn09kzob3lIZQGl6YzARcPBvV7ZfuwbXdBiHMDTeHN-qwEyENyUyeP6us2xKTgNhhmQA7PpAlNJyB4t1OhuwclYzB16Yxp4PQgMVpwNVE9ESkM1PPuLDdTf-J-fBcoku2Lyjg6GcaglbT_IsHVnnQ2nMfalxJslx-Dw1TjkM3q5h5iNoGLy-g6vAHt-vZCtSTZvw='
 
-# သင့်ရဲ့ Gemini API Key အသစ်
-GEMINI_API_KEY = 'AQ.Ab8RN6KPtEfRy2HsY7wHAeqAcKszOaCXwVLvjA7NuQnxrFVaVA' 
+# သင့်ရဲ့ Groq API Key အသစ်
+GROQ_API_KEY = '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' 
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
-# Gemini ကို သုံးဖို့ ပြင်ဆင်ခြင်း
-ai_client = genai.Client(api_key=GEMINI_API_KEY)
+# Groq ကို သုံးဖို့ ပြင်ဆင်ခြင်း
+ai_client = AsyncOpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=GROQ_API_KEY
+)
 
 # ==========================================
 # Render အတွက် Web Server
@@ -79,17 +81,16 @@ async def handler(event):
             await event.mark_read()
             user_message = event.message.message
             
-            # Gemini ကို ခေါ်မယ် (မော်ဒယ်နာမည်အသစ်)
-            response = await asyncio.to_thread(
-                ai_client.models.generate_content,
-                model='gemini-3.8-flash',
-                contents=user_message,
-                config=types.GenerateContentConfig(
-                    system_instruction="မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"
-                )
+            # Groq ကို ခေါ်မယ် (မော်ဒယ်နာမည်အသစ်)
+            response = await ai_client.chat.completions.create(
+                model="openai/gpt-oss-20b", 
+                messages=[
+                    {"role": "system", "content": "မင်းက ကျွန်တော့်ရဲ့ ကိုယ်ပိုင်လက်ထောက်ပါ။ မြန်မာလိုပဲ ယဉ်ယဉ်ကျေးကျေးနဲ့ ချိုချိုသာသာ ပြန်ဖြေပေးပါ။ အင်္ဂလိပ်လို လုံးဝ မပြန်ပါနဲ့။"},
+                    {"role": "user", "content": user_message}
+                ]
             )
             
-            ai_reply = response.text
+            ai_reply = response.choices[0].message.content
             
             # စက္ကန့် ၅ ကနေ ၁၀ အတွင်း စောင့်ပြီး (Quote ပုံစံနဲ့) ပြန်ပို့မယ်
             await asyncio.sleep(random.randint(5, 10)) 
